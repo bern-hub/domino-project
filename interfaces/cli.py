@@ -1,3 +1,5 @@
+import random
+
 from domino.actions import DrawAction, PassAction, PlayAction
 from domino import rules
 from domino.game import Game
@@ -5,6 +7,13 @@ from domino.player import Player
 from domino.table import Table
 from domino.tile import Tile
 
+from agents import *
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from controllers.controller import Controller
+    
 
 class CLI:
     """Interface de terminal. Não implementa nem altera regras do jogo."""
@@ -78,7 +87,6 @@ class CLI:
 
     def ask_action(self, game: Game):
         player = game.current_player
-        self.show_table(game.table)
         playable = self.show_hand(player, game.table)
 
         if not playable:
@@ -99,12 +107,29 @@ class CLI:
             except ValueError:
                 print("Digite um número válido.")
 
-    def play_round(self, game: Game) -> None:
+
+    def show_action(self, action: PlayAction, player: Player):
+
+        tile = player.tiles[action.tile_index]
+        print(
+            f"Jogou: {tile} no lado "
+            + f"{"direito" if action.side == "right" else "esquerdo"}"
+        )
+
+    def play_round(self, game: Game, controllers: list[Controller]) -> None:
         while not game.round_over:
             player = game.current_player
+            controller = controllers[game.players.index(player)]
+
             print(f"\nTurno de {player.name}")
 
-            action = self.ask_action(game)
+            self.show_table(game.table)
+
+            action = controller.choose_action(game)
+
+            if isinstance(action, PlayAction):
+                self.show_action(action, player)
+
             try:
                 game.apply_action(action)
             except (ValueError, IndexError, RuntimeError) as error:
@@ -125,3 +150,36 @@ class CLI:
         print("\nVitórias:")
         for player in game.get_match_ranking():
             print(f"{player.name}: {player.wins}")
+
+
+    def ask_agent_vs_agent(self) -> bool:
+        mode = input("Digite 0 se você quer IA vs IA: ")
+        if mode == "0":
+            return True
+        return False
+
+    def ask_agent_type(self) -> BaseAgent:
+        while True:
+            try:
+                agent_str = int(input(
+                    "\n***Selecioner o tipo do agente***\n" 
+                    + "- Escolher aleatoriamente (0)\n" # não seleciona agentes diferentes por enquanto
+                    + "- RandomAgent (1)\n"
+                    # + "GreedyAgent (2)\n"
+                    ))
+                
+                match agent_str:
+                    case 0:
+                        return random.choice([
+                            RandomAgent(),
+                            #GreedyAgent(),
+                        ])
+                    case 1: 
+                        return RandomAgent()
+                    #case 2:
+                    #    return GreedyAgent()
+                    case _:
+                        raise(ValueError("Escolha um valor válido"))
+            except ValueError as error:
+                print(error)
+

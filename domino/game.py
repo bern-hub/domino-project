@@ -1,5 +1,5 @@
 from __future__ import annotations
-
+from typing import TYPE_CHECKING
 import random
 
 from .actions import DrawAction, PassAction, PlayAction
@@ -7,6 +7,10 @@ from . import rules
 from .player import Player
 from .table import Table
 from .tile import Tile
+
+# if TYPE_CHECKING:
+#     from controllers.controller import Controller
+
 
 
 class Game:
@@ -65,23 +69,55 @@ class Game:
         tile_count: int = 7,
         has_stock: bool = True,
         pull_one: bool = False,
+        #controllers: list[Controller] | None = None,
     ) -> None:
-        
+        # if not controllers:
+        #     raise ValueError("Falta de Controller")
         if not 2 <= n_players <= 4:
             raise ValueError("Só é permitido jogar com 2 a 4 jogadores.")
         if tile_count < 5 or tile_count * n_players > 28:
             raise ValueError("Quantidade de peças por jogador inválida.")
+        # if len(controllers) != n_players:
+        #     raise ValueError("A quantidade de Controllers deve corresponder aos jogadores.")
 
         self.tiles = self.make_tiles()
         random.shuffle(self.tiles)
 
-        self.players = [
-            Player(
-                f"P{number + 1}",
-                [self.tiles.pop() for _ in range(tile_count)]
-            )
-            for number in range(n_players)
-        ]
+        previous_wins = {
+            player.name: player.wins
+            for player in self.players
+        }
+
+        # vejo isso depois
+        # if len(self.players) != n_players:
+        #     self.players = []
+        #     player_idx = 1
+        #     com_idx = 1
+
+        #     for controller in controllers:
+        #         if isinstance(controller, HumanController):
+        #             name = f"P{player_idx}"
+        #             player_idx += 1
+        #         elif isinstance(controller, AgentController):
+        #             name = f"COM{com_idx}"
+        #             com_idx += 1
+        #         else:
+        #             raise TypeError("Controller desconhecido.")
+
+        #         self.players.append(Player(name, []))
+
+        if len(self.players) != n_players:
+            self.players = [
+                Player(f"P{i + 1}", [])
+                for i in range(n_players)
+            ]
+
+        for player in self.players:
+            player.tiles = [
+                self.tiles.pop()
+                for _ in range(tile_count)
+            ]
+
 
         self.has_stock = has_stock
         self.pull_one = pull_one
@@ -156,7 +192,6 @@ class Game:
 
         player.tiles.pop(action.tile_index)
         self.draw_result = None
-        self._check_round_end()
         if not self.round_over:
             self._advance_turn()
 
